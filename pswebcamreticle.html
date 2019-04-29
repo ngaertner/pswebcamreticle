@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta char,,set="utf-8">
+<title>Display Webcam Stream</title>
+ 
+<style>
+#container {
+	margin: 0px auto;
+	width: 500px;
+	height: 375px;
+	border: 10px #333 solid;
+}
+#videoElement {
+	width: 500px;
+	height: 375px;
+	background-color: #666;
+}
+</style>
+</head>
+ 
+<body>
+
+<p>
+Camera Rotation - Degree: <input id="c_rotation" type="text" value="0" onchange="redraw()"/>
+<br/>
+Polaris Position - Hour: <input id="p_hour" type="text" value="0"/> Minute: <input id="p_minute" type="text" value="0"/>
+<br/>
+RA Rotation - Hour: <input id="c_hour" type="text" value="0"/ onchange="redraw()"> Minutes: (0-59): <input id="c_minute"   type="text" value="0"/>
+<br/>
+Scaling: <input id="scaling"   type="text" value="100"/> Opacity: <input id="opacity" type="text" value="75"> Color: <input id="color" type="text" value="#FF1493" />
+</p>
+
+<button onclick="clearcanvas()">clear</button>
+<button onclick="redraw()">redraw</button>
+
+<video style="display: none" autoplay="true" id="videoElement"></video>
+
+<div style="position: relative;">
+ <canvas id="layer1" width="100" height="100" 
+   style="position: absolute; left: 0; top: 0; z-index: 0;"></canvas>
+ <canvas id="layer2" width="100" height="100" 
+   style="position: absolute; left: 0; top: 0; z-index: 1;"></canvas>
+</div>
+
+
+
+<script>
+//javascript
+var video = document.querySelector("#videoElement");
+
+console.log(navigator.mediaDevices.enumerateDevices());
+ 
+if (navigator.mediaDevices.getUserMedia) {
+  navigator.mediaDevices.getUserMedia({  video: { frameRate: {max:5}, width: {min: 1280}, height: {min: 960}, deviceId: "c96b807c59bda072547b29fcd74579c6a2e542bcf8b8685d7921c6e114bbe596" } })
+    .then(function (stream) {
+      video.srcObject = stream;
+    })
+    .catch(function (err0r) {
+      console.log("Something went wrong!");
+    });
+}
+
+
+var cvideo        = document.querySelector('#layer1');
+var cdraw         = document.querySelector('#layer2');
+
+var font_size = "20px";
+var point_size = 3;
+var def_reticlesize = 96;
+var def_linewidth = 0.4;
+var last_x = 0;
+var last_y = 0;
+
+
+cvideo.width  = 1280;
+cvideo.height = 960	;
+
+
+cdraw.width = cvideo.width;
+cdraw.height = cvideo.height;
+
+cdraw.addEventListener("mousedown", getMouse, false);
+ 
+drawVideo();
+
+
+function drawReticle(x,y,radius ) {
+	
+	clearcanvas();
+	
+    var cdraw = document.querySelector('#layer2');
+
+    var ctx_draw = cdraw.getContext("2d");
+    ctx_draw.beginPath();
+    ctx_draw.arc(x, y, radius-2, 0, 2 * Math.PI);
+    ctx_draw.stroke();
+
+    ctx_draw.beginPath();
+    ctx_draw.arc(x, y, radius+2, 0, 2 * Math.PI);
+    ctx_draw.stroke();
+  
+ 	var p_hour          = parseInt(document.querySelector('#p_hour').value);
+	var p_minute        = parseInt(document.querySelector('#p_minute').value);
+	var c_hour          = parseInt(document.querySelector('#c_hour').value);
+	var c_minute        = parseInt(document.querySelector('#c_minute').value);
+	var rotation        = parseInt(document.querySelector('#c_rotation').value);
+	
+	var angle_offset = ( ( ( (c_hour) * 60 ) + c_minute ) / 4) + rotation;
+	
+    var angle = angle_offset + ( ( ( ( p_hour * 60 ) + p_minute ) / 720 ) * 360 );
+	
+
+	drawPoint(x,y,radius,angle,1,"Polaris");
+
+    //down
+	var liney   = y + radius;
+	var linex   = x;	
+	drawLine(x, y, 180+rotation, radius*2, '6' );
+
+    //up
+	var liney   = y - radius;
+	var linex   = x;	
+	drawLine(x, y, 0+rotation, radius*2, '0' );
+
+    //right
+	var liney   = y;
+	var linex   = x + radius;	
+	drawLine(x, y, 90+rotation, radius*2, '3' );
+
+    //left
+	var liney   = y;
+	var linex   = x - radius;	
+	drawLine(x, y, 270+rotation, radius*2, '9' );
+
+	
+    ctx_draw.beginPath();
+    ctx_draw.arc(x, y, point_size, 0, 2 * Math.PI);
+	ctx_draw.stroke();
+
+    ctx_draw.font = font_size;
+    ctx_draw.fillText("ncp",x + 10,y);
+	
+	
+
+}
+
+
+function drawPoint(center_x, center_y, radius, angle,distance,label){
+    var x = center_x + radius * Math.cos(((-angle+90) * -1)*Math.PI/180) * distance;
+    var y = center_y + radius * Math.sin(((-angle+90) * -1)*Math.PI/180) * distance;
+
+    var cdraw = document.querySelector('#layer2');
+    var ctx = cdraw.getContext("2d");
+			
+    ctx.beginPath();
+    ctx.arc(x, y, point_size, 0, 2 * Math.PI);
+	ctx.stroke();
+
+//    ctx.fill();
+
+    ctx.font = font_size;
+    ctx.fillText(label,x + 10,y);
+}
+
+function drawLine( from_x, from_y, angle, length, label ) {
+
+    var to_x = from_x + length * Math.cos(((-angle+90) * -1)*Math.PI/180);
+    var to_y = from_y + length * Math.sin(((-angle+90) * -1)*Math.PI/180);
+	
+    var cdraw = document.querySelector('#layer2');
+    var ctx = cdraw.getContext("2d");
+	
+	ctx.beginPath();
+	ctx.moveTo(from_x, from_y);
+	ctx.lineTo(to_x, to_y);
+	ctx.stroke();
+	
+	
+    ctx.font = font_size;
+    ctx.fillText(label,to_x + 10,to_y+10);
+	
+}
+
+
+function drawVideo(video, canvas, context, frameRate) {
+
+  var video = document.querySelector('video');
+  var canvas = document.querySelector('#layer1');
+  var context = canvas.getContext('2d');
+
+  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  setTimeout(drawVideo, 1/frameRate, video, canvas, context, frameRate);
+}
+
+
+var stylePaddingLeft = parseInt(document.defaultView.getComputedStyle(cdraw, undefined)['paddingLeft'], 10) || 0;
+var stylePaddingTop = parseInt(document.defaultView.getComputedStyle(cdraw, undefined)['paddingTop'], 10) || 0;
+var styleBorderLeft = parseInt(document.defaultView.getComputedStyle(cdraw, undefined)['borderLeftWidth'], 10) || 0;
+var styleBorderTop = parseInt(document.defaultView.getComputedStyle(cdraw, undefined)['borderTopWidth'], 10) || 0;
+var html = document.body.parentNode;
+var htmlTop = html.offsetTop;
+var htmlLeft = html.offsetLeft;
+
+function getMouse(e) {
+    var element = cdraw,
+        offsetX = 0,
+        offsetY = 0;
+
+    // Compute the total offset
+    if (element.offsetParent !== undefined) {
+        do {
+            offsetX += element.offsetLeft;
+            offsetY += element.offsetTop;
+        } while ((element = element.offsetParent));
+    }
+
+    // Add padding and border style widths to offset
+    // Also add the <html> offsets in case there's a position:fixed bar
+    offsetX += stylePaddingLeft + styleBorderLeft + htmlLeft;
+    offsetY += stylePaddingTop + styleBorderTop + htmlTop;
+
+    last_x = e.pageX - offsetX;
+    last_y = e.pageY - offsetY;
+
+    // We return a simple javascript object (a hash) with x and y defined
+    
+	redraw( );
+	
+	
+  drawReticle(last_x,last_y,reticlesize);
+
+	return {
+        x: last_x,
+        y: last_y
+    };
+	
+	
+}
+
+function clearcanvas()
+{
+    var opacity = parseInt(document.querySelector('#opacity').value);
+    var color   = document.querySelector('#color').value;
+	var cdraw = document.querySelector('#layer2'),
+	ctx = cdraw.getContext("2d");
+	ctx.globalAlpha = opacity/100;
+	ctx.lineWidth = def_linewidth;
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+
+    ctx.clearRect(0, 0, cdraw.width, cdraw.height);
+}
+
+function redraw()
+{	
+	if ( last_x == 0 && last_y == 0 ) { return; }
+	clearcanvas();
+
+    var scaling = parseInt(document.querySelector('#scaling').value) / 100
+    
+	var reticlesize = def_reticlesize * scaling;
+	
+    drawReticle(last_x,last_y,reticlesize);
+
+}
+
+</script>
+</body>
+</html>
