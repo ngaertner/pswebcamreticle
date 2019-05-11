@@ -28,7 +28,7 @@ Polaris Position - Hour: <input id="p_hour" type="text" value="0"/> Minute: <inp
 <br/>
 RA Rotation - Hour: <input id="c_hour" type="text" value="0"/ onchange="redraw()"> Minutes: (0-59): <input id="c_minute"   type="text" value="0"/>
 <br/>
-Scaling: <input id="scaling"   type="text" value="100"/> Opacity: <input id="opacity" type="text" value="75"> Color: <input id="color" type="text" value="#FF1493" />
+Scaling: <input id="scaling"   type="text" value="100"/> Opacity: <input id="opacity" type="text" value="75"> Color: <input id="color" type="text" value="cyan" />
 </p>
 
 <button onclick="clearcanvas()">clear</button>
@@ -65,16 +65,20 @@ if (navigator.mediaDevices.getUserMedia) {
 var cvideo        = document.querySelector('#layer1');
 var cdraw         = document.querySelector('#layer2');
 
-var font_size = "20px";
+var def_font_size = 8;
 var point_size = 3;
 var def_reticlesize = 96;
-var def_linewidth = 0.4;
+var def_linewidth = 1;
+var def_pointwidth = 0.5;
+var def_circlewidth = 0.5;
 var last_x = 0;
 var last_y = 0;
-
+var def_scaling = 100;
 
 cvideo.width  = 1280;
 cvideo.height = 960	;
+
+document.querySelector('#scaling').value = def_scaling;
 
 
 cdraw.width = cvideo.width;
@@ -91,14 +95,17 @@ function drawReticle(x,y,radius ) {
 	
     var cdraw = document.querySelector('#layer2');
 
-    var ctx_draw = cdraw.getContext("2d");
-    ctx_draw.beginPath();
-    ctx_draw.arc(x, y, radius-2, 0, 2 * Math.PI);
-    ctx_draw.stroke();
+    var ctx = cdraw.getContext("2d");
+    
+	ctx.lineWidth = def_circlewidth;
 
-    ctx_draw.beginPath();
-    ctx_draw.arc(x, y, radius+2, 0, 2 * Math.PI);
-    ctx_draw.stroke();
+	ctx.beginPath();
+    ctx.arc(x, y, radius-2, 0, 2 * Math.PI);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(x, y, radius+2, 0, 2 * Math.PI);
+    ctx.stroke();
   
  	var p_hour          = parseInt(document.querySelector('#p_hour').value);
 	var p_minute        = parseInt(document.querySelector('#p_minute').value);
@@ -106,12 +113,14 @@ function drawReticle(x,y,radius ) {
 	var c_minute        = parseInt(document.querySelector('#c_minute').value);
 	var rotation        = parseInt(document.querySelector('#c_rotation').value);
 	
+	// calculate offset by camera rotation and pa rotation
 	var angle_offset = ( ( ( (c_hour) * 60 ) + c_minute ) / 4) + rotation;
 	
-    var angle = angle_offset + ( ( ( ( p_hour * 60 ) + p_minute ) / 720 ) * 360 );
+	// calculate polaris offset to courrent rotation
+    var angle_off = angle_offset + ( ( ( ( p_hour * 60 ) + p_minute ) / 720 ) * 360 );
 	
 
-	drawPoint(x,y,radius,angle,1,"Polaris");
+	drawPoint(x,y,radius,angle_off,1,"Polaris");
 
     //down
 	var liney   = y + radius;
@@ -134,12 +143,12 @@ function drawReticle(x,y,radius ) {
 	drawLine(x, y, 270+rotation, radius*2, '9' );
 
 	
-    ctx_draw.beginPath();
-    ctx_draw.arc(x, y, point_size, 0, 2 * Math.PI);
-	ctx_draw.stroke();
+    ctx.beginPath();
+    ctx.arc(x, y, point_size, 0, 2 * Math.PI);
+	ctx.stroke();
 
-    ctx_draw.font = font_size;
-    ctx_draw.fillText("ncp",x + 10,y);
+    ctx.font = 'normal ' + def_font_size + 'px verdana';
+    ctx.fillText("ncp",x + 10,y);
 	
 	
 
@@ -152,24 +161,68 @@ function drawPoint(center_x, center_y, radius, angle,distance,label){
 
     var cdraw = document.querySelector('#layer2');
     var ctx = cdraw.getContext("2d");
-			
+	
+	ctx.lineWidth = def_pointwidth;
+	
     ctx.beginPath();
     ctx.arc(x, y, point_size, 0, 2 * Math.PI);
 	ctx.stroke();
 
 //    ctx.fill();
 
-    ctx.font = font_size;
-    ctx.fillText(label,x + 10,y);
+/*
+	var rotation        = parseInt(document.querySelector('#c_rotation').value);
+	
+	var crossLen = def_reticlesize * def_scaling/100;
+
+    var from_x = x + point_size * Math.cos(((-rotation+90) * -1)*Math.PI/180);
+    var from_y = y + point_size * Math.sin(((-rotation+90) * -1)*Math.PI/180);
+	
+	drawLine( from_x, from_y, rotation+0, crossLen , '', def_pointwidth);
+*/	
+
+	drawPointLine(x,y, 0);
+	drawPointLine(x,y, 90);
+	drawPointLine(x,y, 180);
+	drawPointLine(x,y, 270);
+	
+	//drawLine( x, y, rotation+90, crossLen , '');
+	//drawLine( x, y, rotation+180, crossLen , '');
+	//drawLine( x, y, rotation+270, crossLen , '');
+
+    ctx.font = 'normal ' + def_font_size + 'px verdana';
+    ctx.fillText(label,x + 5,y-5);
 }
 
-function drawLine( from_x, from_y, angle, length, label ) {
+function drawPointLine( x, y, angle) {
 
+	var rotation        = parseInt(document.querySelector('#c_rotation').value);
+	
+	var c_hour          = parseInt(document.querySelector('#c_hour').value);
+	var c_minute        = parseInt(document.querySelector('#c_minute').value);
+
+	var angle_offset = ( ( ( (c_hour) * 60 ) + c_minute ) / 4);
+
+	
+	var crossLen = def_reticlesize * def_scaling/100/2;
+
+    var from_x = x + point_size/2 * Math.cos(((-rotation-angle+90) * -1)*Math.PI/180);
+    var from_y = y + point_size/2 * Math.sin(((-rotation-angle+90) * -1)*Math.PI/180);
+	
+	drawLine( from_x, from_y, rotation+angle+angle_offset, crossLen , '', def_pointwidth);
+
+
+}
+
+function drawLine( from_x, from_y, angle, length, label, linewidth ) {
     var to_x = from_x + length * Math.cos(((-angle+90) * -1)*Math.PI/180);
     var to_y = from_y + length * Math.sin(((-angle+90) * -1)*Math.PI/180);
 	
     var cdraw = document.querySelector('#layer2');
     var ctx = cdraw.getContext("2d");
+	
+	if (typeof linewidth === 'undefined') { linewidth = def_linewidth; }
+	ctx.lineWidth = linewidth;
 	
 	ctx.beginPath();
 	ctx.moveTo(from_x, from_y);
@@ -177,8 +230,8 @@ function drawLine( from_x, from_y, angle, length, label ) {
 	ctx.stroke();
 	
 	
-    ctx.font = font_size;
-    ctx.fillText(label,to_x + 10,to_y+10);
+    ctx.font = 'normal ' + def_font_size*2 + 'px verdana'; //font_size*3) + 'px';
+    ctx.fillText(label,to_x + 15,to_y+20);
 	
 }
 
@@ -244,9 +297,10 @@ function clearcanvas()
     var opacity = parseInt(document.querySelector('#opacity').value);
     var color   = document.querySelector('#color').value;
 	var cdraw = document.querySelector('#layer2'),
+    
+	def_scaling = parseInt(document.querySelector('#scaling').value) / 100
 	ctx = cdraw.getContext("2d");
 	ctx.globalAlpha = opacity/100;
-	ctx.lineWidth = def_linewidth;
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
 
@@ -258,9 +312,8 @@ function redraw()
 	if ( last_x == 0 && last_y == 0 ) { return; }
 	clearcanvas();
 
-    var scaling = parseInt(document.querySelector('#scaling').value) / 100
     
-	var reticlesize = def_reticlesize * scaling;
+	var reticlesize = def_reticlesize * def_scaling/100;
 	
     drawReticle(last_x,last_y,reticlesize);
 
